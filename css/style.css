@@ -1,0 +1,308 @@
+/* ================= GLOBAL STYLES ================= */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f0f4f8;
+    margin: 0;
+    padding: 0;
+    color: #333;
+}
+
+.bank-header {
+    background: #1e3a8a;
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+
+.bank-header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+}
+
+.bank-header p {
+    margin: 5px 0 0 0;
+    color: #93c5fd;
+}
+
+/* ================= ROLE SWITCHER STYLES ================= */
+.role-switcher {
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.role-switcher span {
+    font-size: 0.9rem;
+    color: #93c5fd;
+}
+
+.btn-role {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    width: auto;
+    margin: 0;
+}
+
+.btn-role:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.btn-role.active-role {
+    background: white;
+    color: #1e3a8a;
+    font-weight: bold;
+    border-color: white;
+}
+
+/* ================= DASHBOARD LAYOUT ================= */
+.dashboard-container {
+    max-width: 1000px;
+    margin: 20px auto;
+    padding: 0 15px;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.metric-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    text-align: center;
+}
+
+.metric-card h3 {
+    margin: 0 0 10px 0;
+    font-size: 0.9rem;
+    color: #64748b;
+    text-transform: uppercase;
+}
+
+.metric-card p {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #1e293b;
+}
+
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.card h2 {
+    margin-top: 0;
+    font-size: 1.2rem;
+    color: #1e293b;
+    border-bottom: 2px solid #f1f5f9;
+    padding-bottom: 10px;
+}
+
+.full-width {
+    grid-column: 1 / -1;
+}
+
+/* ================= FORMS & INPUTS ================= */
+label {
+    display: block;
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #475569;
+}
+
+input, .member-select {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    box-sizing: border-box;
+    background: white;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 15px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+
+.btn-secondary { background: #0d9488; color: white; }
+.btn-secondary:hover { background: #0f766e; }
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    background: #475569;
+    color: white;
+    border-radius: 4px;
+    width: auto;
+    margin: 0;
+}
+.btn-sm:hover { background: #334155; }
+
+/* ================= TABLES ================= */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+th {
+    background-color: #f8fafc;
+    color: #475569;
+}
+
+/* ================= BADGES & PROFILES ================= */
+.badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+.badge-none { background: #f1f5f9; color: #64748b; }
+.badge-active { background: #dbeafe; color: #1e40af; }
+.badge-overdue { background: #fee2e2; color: #991b1b; }
+
+.profile-stats {
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+}
+
+.profile-stats p {
+    margin: 8px 0;
+}
+
+.history-list {
+    max-height: 150px;
+    overflow-y: auto;
+    padding-left: 20px;
+    margin: 0;
+    font-size: 0.9rem;
+    color: #475569;
+}
+
+/* ================= MODAL WINDOW ================= */
+.modal {
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    position: relative;
+}
+
+.close-btn {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #64748b;
+}
+
+/* ================= PRINT / PDF STYLING ================= */
+@media print {
+    /* Hide navigation headers, role switchers, and action forms ONLY during print */
+    .bank-header,
+    .role-switcher,
+    .actions-grid,
+    #admin-view,
+    .member-select,
+    button,
+    .btn-primary,
+    .btn-secondary,
+    .btn-warning,
+    .btn-sm {
+        display: none !important;
+    }
+
+    /* Ensure member view is fully visible when printing */
+    #member-view {
+        display: block !important;
+    }
+
+    body {
+        background: white !important;
+        color: black !important;
+        margin: 0;
+        padding: 0;
+    }
+
+    .dashboard-container {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .card, .metric-card {
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+        break-inside: avoid;
+        margin-bottom: 15px;
+    }
+
+    .history-list {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    th {
+        background-color: #f1f5f9 !important;
+        color: black !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+
+
+
