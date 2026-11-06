@@ -1,10 +1,6 @@
-import { bankData } from './data.js';
+import { bankData, initGoogleAuth, logSystemChange, saveLedgerToDrive, downloadLocalBackup } from './data.js';
 import { sessionState, setRole } from './auth.js';
 import { renderApp } from './ui.js';
-import { initGoogleAuth } from './data.js'; // <-- Make sure this is imported
-import { logSystemChange } from './data.js'
-import { triggerLocalBackup, saveLedgerToDrive } from './data.js';
-import { downloadLocalBackup } from './data.js';
 
 // Run initialization on load
 document.addEventListener('DOMContentLoaded', () => {
@@ -58,34 +54,7 @@ document.getElementById('deposit-form').addEventListener('submit', function(e) {
 
 });
 
-// Handle Loan Form with Due Date
-document.getElementById('loan-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const nameInput = document.getElementById('loan-member').value.trim();
-    const amountInput = parseFloat(document.getElementById('loan-amount').value);
-    const dueDateInput = document.getElementById('loan-due').value;
-    const currentDate = new Date().toISOString().split('T')[0];
 
-    let member = bankData.members.find(m => m.name.toLowerCase() === nameInput.toLowerCase());
-
-    if (member) {
-        member.loan.amount += amountInput;
-        member.loan.dueDate = dueDateInput;
-        member.loan.status = "Active";
-        member.history.push({ type: "Loan Taken", amount: amountInput, date: currentDate });
-    } else {
-        bankData.members.push({
-            id: bankData.members.length + 1,
-            name: nameInput,
-            savings: 0,
-            loan: { amount: amountInput, dueDate: dueDateInput, status: "Active" },
-            history: [{ type: "Loan Taken", amount: amountInput, date: currentDate }]
-        });
-    }
-
-    document.getElementById('loan-form').reset();
-    renderApp(bankData, sessionState);
-});
 
 // Event Delegation for Table Buttons (View Account)
 document.getElementById('ledger-table-body').addEventListener('click', function(e) {
@@ -284,12 +253,12 @@ _Report generated securely via Member's Ledger System._`;
 // Automatically download local copy whenever changes are synced to Google Drive
 export async function saveAndBackup() {
     await saveLedgerToDrive(); // Saves to Google Drive
-    triggerLocalBackup();      // Triggers local PC download
+    downloadLocalBackup();      // Triggers local PC download
 }
 
 // Optional: Prompt or auto-trigger local backup before closing the window
 window.addEventListener('beforeunload', (e) => {
-    triggerLocalBackup();
+    downloadLocalBackup();
 });
 
 // Handle Admin Print / Export to PDF Button
