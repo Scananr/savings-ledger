@@ -76,6 +76,29 @@ export function getAccessToken() {
     return accessToken;
 }
 
+// 🌍 Fetch the master ledger publicly for regular members (No OAuth / Token required)
+export async function fetchPublicMemberLedger(fileId) {
+    try {
+        // Using Google Drive's direct download endpoint for shared/public files
+        const url = `https://drive.google.com/uc?export=download&id=${fileId}`;
+        
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Failed to fetch public ledger data.");
+        
+        const remoteData = await response.json();
+        
+        // Safely update the local client state with the treasurer's latest data
+        bankData.members = remoteData.members || bankData.members;
+        bankData.auditLog = remoteData.auditLog || bankData.auditLog;
+        
+        console.log("Successfully synced member view from master ledger!", bankData);
+        return bankData;
+    } catch (err) {
+        console.error("Error fetching public ledger:", err);
+        return null;
+    }
+}
+
 // 🔍 Search for ledger.json in Google Drive
 export async function findLedgerFile() {
     if (!accessToken) return null;
