@@ -1,73 +1,26 @@
-// Centralized Database State with Advanced Loan & Withdrawal Tracking
-export let bankData = {
-    members: [
-        {
-            id: 1,
-            name: "Alice",
-            savings: 450,
-            loan: {
-                principal: 200,
-                interestRate: 10, // 10%
-                interestType: "simple",
-                totalDue: 220, // Principal (200) + 10% interest (20)
-                amountPaid: 50, // Partial payment made
-                balanceRemaining: 170, // TotalDue - AmountPaid
-                dueDate: "2026-11-15",
-                status: "Active"
-            },
-            history: [
-                { type: "Deposit", amount: 250, date: "2026-09-01" },
-                { type: "Deposit", amount: 200, date: "2026-10-01" },
-                { type: "Loan Taken", amount: 200, date: "2026-10-10" },
-                { type: "Loan Repayment", amount: 50, date: "2026-10-20" }
-            ]
-        },
-        {
-            id: 2,
-            name: "Bob",
-            savings: 200,
-            loan: {
-                principal: 300,
-                interestRate: 15,
-                interestType: "simple",
-                totalDue: 345,
-                amountPaid: 0,
-                balanceRemaining: 345,
-                dueDate: "2026-10-01",
-                status: "Overdue"
-            },
-            history: [
-                { type: "Deposit", amount: 200, date: "2026-10-01" },
-                { type: "Loan Taken", amount: 300, date: "2026-10-05" }
-            ]
-        },
-        {
-            id: 3,
-            name: "Charlie",
-            savings: 120,
-            loan: {
-                principal: 0,
-                interestRate: 0,
-                interestType: "simple",
-                totalDue: 0,
-                amountPaid: 0,
-                balanceRemaining: 0,
-                dueDate: "",
-                status: "None"
-            },
-            history: [
-                { type: "Deposit", amount: 120, date: "2026-10-02" }
-            ]
-        }
-    ],
+const LOCAL_STORAGE_KEY = 'savings_ledger_data';
+
+// 1. Always load from local browser storage first so refreshes never wipe out data
+const savedLocalData = localStorage.getItem(LOCAL_STORAGE_KEY);
+
+
+export let bankData = savedLocalData ? JSON.parse(savedLocalData) : {
+    members: [],
     auditLog: [
         {
             timestamp: new Date().toISOString(),
             action: "SYSTEM_INIT",
-            details: "Ledger initialized."
+            details: "Ledger initialized locally."
         }
     ]
 };
+
+// 2. Ensure this function writes cleanly to browser storage
+export function persistLocalState() {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(bankData));
+}
+
+
 
 // Google Drive Sync Logic
 let accessToken = null;
@@ -76,7 +29,7 @@ export function getAccessToken() {
     return accessToken;
 }
 
-// 🌍 Fetch the master ledger publicly for regular members (No OAuth / Token required)
+//  Fetch the master ledger publicly for regular members (No OAuth / Token required)
 export async function fetchPublicMemberLedger(fileId) {
     try {
         // Using Google Drive's direct download endpoint for shared/public files
@@ -99,7 +52,7 @@ export async function fetchPublicMemberLedger(fileId) {
     }
 }
 
-// 🔍 Search for ledger.json in Google Drive
+// Search for ledger.json in Google Drive
 export async function findLedgerFile() {
     if (!accessToken) return null;
     
@@ -111,14 +64,25 @@ export async function findLedgerFile() {
             }
         );
         const data = await response.json();
-        return data.files && data.files.length > 0 ? data.files[0].id : null;
+        
+        if (data.files && data.files.length > 0) {
+            const fileId = data.files[0].id;
+            
+            // ⬇️ CACHE IT LOCALLY RIGHT HERE ⬇️
+            localStorage.setItem('google_drive_file_id', fileId);
+            console.log("File ID cached locally from search:", fileId);
+            
+            return fileId;
+        }
+        
+        return null;
     } catch (err) {
         console.error("Error searching for ledger.json:", err);
         return null;
     }
 }
 
-// 📝 Create ledger.json in Google Drive with initial bankData
+//  Create ledger.json in Google Drive with initial bankData
 export async function createLedgerFile() {
     if (!accessToken) return null;
 
@@ -143,6 +107,15 @@ export async function createLedgerFile() {
             }
         );
         const file = await response.json();
+        
+        if (file && file.id) {
+            localStorage.setItem('google_drive_file_id', file.id);
+            console.log("File ID cached locally:", file.id);
+        }
+
+        console.log("Created new ledger.json in Drive with ID:", file.id);
+        return file.id;
+        
         console.log("Created new ledger.json in Drive with ID:", file.id);
         return file.id;
     } catch (err) {
@@ -151,7 +124,7 @@ export async function createLedgerFile() {
     }
 }
 
-// 📥 Load ledger data from Google Drive
+//  Load ledger data from Google Drive
 export async function loadLedgerFromDrive() {
     const fileId = await findLedgerFile();
     if (!fileId) {
@@ -178,7 +151,7 @@ export async function loadLedgerFromDrive() {
     }
 }
 
-// 💾 Save or Sync bankData changes to Google Drive
+// Save and Sync bankData changes to Google Drive
 export async function saveLedgerToDrive() {
     let fileId = await findLedgerFile();
     
@@ -206,7 +179,7 @@ export async function saveLedgerToDrive() {
     }
 }
 
-// 🔗 Google Authentication Hook
+// Google Authentication Hook
 export function initGoogleAuth(onAuthSuccess) {
     const authBtn = document.getElementById('google-auth-btn');
     if (!authBtn) {
@@ -274,7 +247,7 @@ export async function archiveMember(memberId) {
     return true;
 }
 
-//  Optional: Restore an archived member if needed
+// Restore an archived member if needed
 export async function restoreMember(memberId) {
     const member = bankData.members.find(m => m.id === memberId);
     
@@ -298,6 +271,8 @@ export function logSystemChange(actionType, description) {
     bankData.auditLog.push(entry);
     console.log(`[Audit Log] ${actionType}: ${description}`);
 }
+
+
 
 // Generate and download a local recovery JSON file
 export function downloadLocalBackup() {

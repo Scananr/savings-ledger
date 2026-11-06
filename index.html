@@ -177,11 +177,13 @@
 
                
                 <div style="margin-top: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                    <button id="copy-whatsapp-btn" class="btn-primary" style="width: auto; background: #25d366; margin: 0;">📱 Copy WhatsApp Summary</button>
+                    <button id="copy-whatsapp-btn" class="btn-primary" style="width: auto; background: #25d366; margin: 0;">📱 Create a Summary Report</button>
                     <button id="print-pdf-btn" class="btn-primary" style="width: auto; background: #475569; margin: 0;">🖨️ Print / Save as PDF</button>
                     <!-- New Manual Local Backup Button -->
                     <button id="download-backup-btn" class="btn-primary" style="width: auto; background: #0d9488; margin: 0;">💾 Download Ledger Recovery File</button>
                     <span id="copy-feedback" style="font-size: 0.85rem; color: #059669; display: none;">✓ Copied to clipboard!</span>
+                    <button id="reset-ledger-btn" class="btn-primary" style="width: auto; background: #dc2626; margin: 0;">🗑️ Reset to Empty Ledger</button>
+                
                 </div>
             </section>
         </div>
@@ -200,7 +202,12 @@
                     <!-- Populated dynamically -->
                 </select>
 
-                <div class="profile-stats" style="margin-top: 20px;">
+                <!-- Printable Member Name Heading -->
+                <div style="margin-top: 15px;">
+                    <h3 style="color: #1e3a8a; margin-bottom: 5px;">Account Statement for: <span id="active-member-display" style="text-decoration: underline;">Member</span></h3>
+                </div>
+
+                <div class="profile-stats" style="margin-top: 15px;">
                     <h3>My Financial Standing</h3>
                     <p><strong>My Savings Balance:</strong> <span id="portal-savings">$0</span></p>
                     <hr style="border: 0; border-top: 1px solid #cbd5e1; margin: 10px 0;">

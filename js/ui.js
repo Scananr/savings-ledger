@@ -85,6 +85,12 @@ function renderMemberPortal(bankData, currentName) {
     const member = bankData.members.find(m => m.name.toLowerCase() === currentName.toLowerCase());
     if (!member) return;
 
+    // Update printable member name display
+    const activeMemberSpan = document.getElementById('active-member-display');
+    if (activeMemberSpan) {
+        activeMemberSpan.textContent = member.name;
+    }
+
     // Populate Savings & Loan Financial Standing
     document.getElementById('portal-savings').textContent = `$${member.savings}`;
     document.getElementById('portal-loan-principal').textContent = `$${member.loan.principal || 0}`;

@@ -1,6 +1,12 @@
-import { bankData, initGoogleAuth, logSystemChange, saveLedgerToDrive, downloadLocalBackup } from './data.js';
+import { bankData, initGoogleAuth, logSystemChange, saveLedgerToDrive, downloadLocalBackup, fetchPublicMemberLedger, persistLocalState, getAccessToken } from './data.js';
 import { sessionState, setRole } from './auth.js';
-import { renderApp } from './ui.js';
+import { renderApp, showProfileModal, closeProfileModal } from './ui.js';
+import { resetLedgerToEmpty } from './data.js';
+
+// This event listener helps reset the initial ledger fields to empty.
+document.getElementById('reset-ledger-btn').addEventListener('click', function() {
+    resetLedgerToEmpty();
+});
 
 // Run initialization on load
 document.addEventListener('DOMContentLoaded', () => {
@@ -9,8 +15,24 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
  
-// Global function to switch roles from UI buttons
-window.switchRole = function(role) {
+// This switchRole instructs the member button click
+window.switchRole = async function(role) {
+    if (role === 'member') {
+        // Retrieve the file ID cached in localStorage during admin save/sync
+        const MASTER_FILE_ID = localStorage.getItem('google_drive_file_id');
+        
+        if (!MASTER_FILE_ID) {
+            alert("Ledger File ID not found. Please complete an admin action or sync first.");
+            return;
+        }
+        
+        // Fetch the latest data from Drive publicly before switching view
+        const remoteData = await fetchPublicMemberLedger(MASTER_FILE_ID);
+        if (remoteData) {
+            console.log("Successfully updated local state from Google Drive.");
+        }
+    }
+    
     setRole(role);
     renderApp(bankData, sessionState);
 };
@@ -27,10 +49,21 @@ document.addEventListener('change', function(e) {
 // Handle Savings Deposit Form
 document.getElementById('deposit-form').addEventListener('submit', function(e) {
     e.preventDefault();
+    
     const nameInput = document.getElementById('deposit-member').value.trim();
     const amountInput = parseFloat(document.getElementById('deposit-amount').value);
-    const currentDate = new Date().toISOString().split('T')[0];
 
+    // 1. POP UP THE CHECKPOINT DIALOGUE
+    const isConfirmed = confirm(`Review Deposit Entry:\n\nMember: ${nameInput}\nAmount: $${amountInput}\n\nClick OK to confirm and save, or Cancel to discard.`);
+
+    // 2. IF ADMIN CANCELS, STOP COMPLETELY
+    if (!isConfirmed) {
+        console.log("Deposit cancelled by admin. No data saved.");
+        return; // Exits function without saving or touching storage
+    }
+
+    // 3. IF CONFIRMED, PROCEED WITH SAVING
+    const currentDate = new Date().toISOString().split('T')[0];
     let member = bankData.members.find(m => m.name.toLowerCase() === nameInput.toLowerCase());
 
     if (member) {
@@ -41,17 +74,21 @@ document.getElementById('deposit-form').addEventListener('submit', function(e) {
             id: bankData.members.length + 1,
             name: nameInput,
             savings: amountInput,
-            loan: { amount: 0, dueDate: "", status: "None" },
+            loan: { principal: 0, balanceRemaining: 0, dueDate: "", status: "None" },
             history: [{ type: "Deposit", amount: amountInput, date: currentDate }]
         });
     }
-        logSystemChange("SAVINGS_DEPOSIT", `Deposited $${amountInput} for member ${nameInput}`);
-    
+
+    logSystemChange("SAVINGS_DEPOSIT", `Deposited $${amountInput} for member ${nameInput}`);
     document.getElementById('deposit-form').reset();
+
+    // 4. COMMIT TO LOCAL STORAGE & SYNC
+    persistLocalState(); 
     renderApp(bankData, sessionState);
+    
+    alert("Deposit successfully recorded!");
 
     
-
 });
 
 
@@ -73,23 +110,42 @@ document.getElementById('withdraw-form').addEventListener('submit', function(e) 
 
     let member = bankData.members.find(m => m.name.toLowerCase() === nameInput.toLowerCase());
 
-    if (member) {
-        if (member.savings < amountInput) {
-            alert("Error: Withdrawal amount exceeds member's savings balance!");
-            return;
-        }
-        member.savings -= amountInput;
-        member.history.push({ type: "Withdrawal", amount: amountInput, date: currentDate });
-    } else {
+    // 1. Validate member existence
+    if (!member) {
         alert("Member not found!");
         return;
     }
 
+    // 2. Validate sufficient balance
+    if (member.savings < amountInput) {
+        alert("Error: Withdrawal amount exceeds member's savings balance!");
+        return;
+    }
+
+    // 3. POP UP THE CHECKPOINT DIALOGUE
+    const isConfirmed = confirm(`Review Withdrawal Entry:\n\nMember: ${member.name}\nRequested Withdrawal: $${amountInput}\nCurrent Balance: $${member.savings}\n\nClick OK to confirm and save, or Cancel to discard.`);
+
+    // 4. IF ADMIN CANCELS, STOP COMPLETELY (No storage updates)
+    if (!isConfirmed) {
+        console.log("Withdrawal cancelled by admin. No data saved.");
+        return;
+    }
+
+    // 5. PROCEED WITH WITHDRAWAL MUTATION
+    member.savings -= amountInput;
+    member.history.push({ type: "Withdrawal", amount: amountInput, date: currentDate });
+
+    logSystemChange("SAVINGS_WITHDRAWAL", `Withdrew $${amountInput} for member ${member.name}`);
     document.getElementById('withdraw-form').reset();
+
+    // 6. LOCK IN LOCAL STORAGE & BACKGROUND SYNC TO CLOUD
+    autoSaveAndSync();
+
     renderApp(bankData, sessionState);
+    alert("Withdrawal successfully recorded!");
 });
 
-// Handle Loan Form with Dynamic Interest Calculations
+// Handle Loan Form
 document.getElementById('loan-form').addEventListener('submit', function(e) {
     e.preventDefault();
     const nameInput = document.getElementById('loan-member').value.trim();
@@ -109,6 +165,16 @@ document.getElementById('loan-form').addEventListener('submit', function(e) {
     }
     totalDue = Math.round(totalDue * 100) / 100; // Round to 2 decimals
 
+    // 1. POP UP THE CHECKPOINT DIALOGUE
+    const isConfirmed = confirm(`Review Loan Issuance:\n\nMember: ${nameInput}\nPrincipal: $${principal}\nInterest Type: ${interestType} (${interestRate}%)\nTotal Due: $${totalDue}\nDue Date: ${dueDateInput}\n\nClick OK to confirm and save, or Cancel to discard.`);
+
+    // 2. IF ADMIN CANCELS, STOP COMPLETELY (No storage updates)
+    if (!isConfirmed) {
+        console.log("Loan issuance cancelled by admin. No data saved.");
+        return;
+    }
+
+    // 3. PROCEED WITH LOAN MUTATION
     let member = bankData.members.find(m => m.name.toLowerCase() === nameInput.toLowerCase());
 
     if (member) {
@@ -142,8 +208,14 @@ document.getElementById('loan-form').addEventListener('submit', function(e) {
         });
     }
 
+    logSystemChange("LOAN_ISSUED", `Issued loan of $${principal} to member ${nameInput}`);
     document.getElementById('loan-form').reset();
+
+    // 4. LOCK IN LOCAL STORAGE & BACKGROUND SYNC TO CLOUD
+    autoSaveAndSync();
+
     renderApp(bankData, sessionState);
+    alert("Loan successfully recorded!");
 });
 
 // Handle Partial Loan Repayments
@@ -155,18 +227,33 @@ document.getElementById('repay-form').addEventListener('submit', function(e) {
 
     let member = bankData.members.find(m => m.name.toLowerCase() === nameInput.toLowerCase());
 
-    if (!member || member.loan.balanceRemaining <= 0) {
+    // 1. Validate member and active loan
+    if (!member || !member.loan || member.loan.balanceRemaining <= 0) {
         alert("Member not found or has no active loan balance.");
         return;
     }
 
+    // 2. Validate repayment amount against remaining balance
     if (repayAmount > member.loan.balanceRemaining) {
         alert(`Repayment exceeds remaining balance ($${member.loan.balanceRemaining})!`);
         return;
     }
 
+    const newBalance = Math.round((member.loan.balanceRemaining - repayAmount) * 100) / 100;
+    const projectedStatus = newBalance === 0 ? "Paid" : member.loan.status;
+
+    // 3. POP UP THE CHECKPOINT DIALOGUE
+    const isConfirmed = confirm(`Review Loan Repayment:\n\nMember: ${member.name}\nRepayment Amount: $${repayAmount}\nPrevious Balance: $${member.loan.balanceRemaining}\nNew Balance Remaining: $${newBalance}\nStatus After Payment: ${projectedStatus}\n\nClick OK to confirm and save, or Cancel to discard.`);
+
+    // 4. IF ADMIN CANCELS, STOP COMPLETELY (No storage updates)
+    if (!isConfirmed) {
+        console.log("Loan repayment cancelled by admin. No data saved.");
+        return;
+    }
+
+    // 5. PROCEED WITH REPAYMENT MUTATION
     member.loan.amountPaid += repayAmount;
-    member.loan.balanceRemaining -= repayAmount;
+    member.loan.balanceRemaining = newBalance;
     
     if (member.loan.balanceRemaining === 0) {
         member.loan.status = "Paid";
@@ -174,8 +261,14 @@ document.getElementById('repay-form').addEventListener('submit', function(e) {
 
     member.history.push({ type: "Loan Repayment", amount: repayAmount, date: currentDate });
 
+    logSystemChange("LOAN_REPAYMENT", `Received repayment of $${repayAmount} from member ${member.name}`);
     document.getElementById('repay-form').reset();
+
+    // 6. LOCK IN LOCAL STORAGE & BACKGROUND SYNC TO CLOUD
+    autoSaveAndSync();
+
     renderApp(bankData, sessionState);
+    alert("Loan repayment successfully recorded!");
 });
 
 // Handle Overdue Penalty Application
@@ -187,19 +280,33 @@ document.getElementById('penalty-form').addEventListener('submit', function(e) {
 
     let member = bankData.members.find(m => m.name.toLowerCase() === nameInput.toLowerCase());
 
+    // 1. Validate member existence
     if (!member) {
         alert("Member not found!");
         return;
     }
 
-    if (member.loan.balanceRemaining <= 0) {
+    // 2. Validate active loan existence
+    if (!member.loan || member.loan.balanceRemaining <= 0) {
         alert("Cannot apply penalty: This member has no active loan balance.");
         return;
     }
 
-    // Increase debt obligations and flag as overdue
-    member.loan.balanceRemaining += penaltyAmount;
-    member.loan.totalDue += penaltyAmount;
+    const newBalance = Math.round((member.loan.balanceRemaining + penaltyAmount) * 100) / 100;
+    const newTotalDue = Math.round((member.loan.totalDue + penaltyAmount) * 100) / 100;
+
+    // 3. POP UP THE CHECKPOINT DIALOGUE
+    const isConfirmed = confirm(`Review Penalty Application:\n\nMember: ${member.name}\nPenalty Amount: $${penaltyAmount}\nPrevious Balance: $${member.loan.balanceRemaining}\nNew Total Balance: $${newBalance}\nStatus Change: Active ➡️ Overdue\n\nClick OK to confirm and save, or Cancel to discard.`);
+
+    // 4. IF ADMIN CANCELS, STOP COMPLETELY (No storage updates)
+    if (!isConfirmed) {
+        console.log("Penalty application cancelled by admin. No data saved.");
+        return;
+    }
+
+    // 5. PROCEED WITH PENALTY MUTATION
+    member.loan.balanceRemaining = newBalance;
+    member.loan.totalDue = newTotalDue;
     member.loan.status = "Overdue";
 
     // Record the penalty in their history log
@@ -209,8 +316,14 @@ document.getElementById('penalty-form').addEventListener('submit', function(e) {
         date: currentDate 
     });
 
+    logSystemChange("PENALTY_APPLIED", `Applied penalty of $${penaltyAmount} to member ${member.name}`);
     document.getElementById('penalty-form').reset();
+
+    // 6. LOCK IN LOCAL STORAGE & BACKGROUND SYNC TO CLOUD
+    autoSaveAndSync();
+
     renderApp(bankData, sessionState);
+    alert("Penalty successfully recorded!");
 });
 
 // Handle Admin Copy WhatsApp Report Button
@@ -250,13 +363,29 @@ _Report generated securely via Member's Ledger System._`;
     });
 });
 
+// Silent background sync helper
+async function autoSaveAndSync() {
+    // 1. Save to browser memory so refresh doesn't wipe it
+    persistLocalState();
+    
+    // 2. If connected to Google Drive, sync silently in the background
+    if (getAccessToken()) {
+        try {
+            await saveLedgerToDrive();
+            console.log("Auto-synced changes to Google Drive.");
+        } catch (err) {
+            console.error("Background sync failed:", err);
+        }
+    }
+}
+
 // Automatically download local copy whenever changes are synced to Google Drive
 export async function saveAndBackup() {
     await saveLedgerToDrive(); // Saves to Google Drive
     downloadLocalBackup();      // Triggers local PC download
 }
 
-// Optional: Prompt or auto-trigger local backup before closing the window
+// Prompt or auto-trigger local backup before closing the window
 window.addEventListener('beforeunload', (e) => {
     downloadLocalBackup();
 });

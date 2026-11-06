@@ -256,7 +256,6 @@ th {
     .bank-header,
     .role-switcher,
     .actions-grid,
-    #admin-view,
     .member-select,
     button,
     .btn-primary,
@@ -264,11 +263,6 @@ th {
     .btn-warning,
     .btn-sm {
         display: none !important;
-    }
-
-    /* Ensure member view is fully visible when printing */
-    #member-view {
-        display: block !important;
     }
 
     body {
